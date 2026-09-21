@@ -23,11 +23,20 @@ hl = {
   get_active_workspace = function() return workspace end,
   dsp = { window = {
     move = function(args) return args end,
+    center = function(args)
+      args.kind = "center"
+      return args
+    end,
     alter_zorder = function(args) return args end,
   } },
   dispatch = function(args)
     actions[#actions + 1] = args
-    if args.x then current.at = { x = args.x, y = args.y } end
+    if args.workspace then args.window.workspace = args.workspace end
+    if args.kind == "center" then
+      assert(args.window.workspace == workspace, "move to the destination workspace before centering")
+      -- Simulate the compositor placing the window on screen; centering geometry is its responsibility.
+      args.window.at = { x = workspace.monitor.x, y = workspace.monitor.y }
+    end
   end,
 }
 
@@ -57,8 +66,8 @@ setup()
 opened(current)
 assert(#actions == 0, "placement must wait for the application to settle")
 run_timers()
-assert(current.at.x == 3620 and current.at.y == 370, "recover to the active monitor")
 assert(actions[1].workspace == workspace and actions[1].follow == false)
+assert(actions[2].kind == "center" and actions[2].window == current, "ask Hyprland to center the recovered window")
 assert(#actions == 3, "a recovered window must be left alone on the next check")
 print("ok - off-screen Toolbox reopens on the active workspace")
 
@@ -87,7 +96,7 @@ run_timers()
 assert(#actions == 0, "the lower part of a scaled portrait monitor is visible")
 current.at = { x = 1300, y = 0 }
 run_timers()
-assert(current.at.x == 420 and current.at.y == 410, "center in logical, rotated coordinates")
+assert(#actions == 3 and actions[2].kind == "center", "recover positions outside the scaled portrait monitor")
 print("ok - scaled and rotated monitor bounds are respected")
 
 for _, state in ipairs({ "closed", "hidden", "unmapped", "tiled", "replaced", "no-workspace" }) do
@@ -118,12 +127,12 @@ opened(current)
 timers[1]()
 current.at = { x = -440, y = 0 }
 timers[2]()
-assert(current.at.x == 3620, "recover when placement changes after the first check")
+assert(#actions == 3 and actions[2].kind == "center", "recover when placement changes after the first check")
 print("ok - late off-screen placement is recovered")
 
 setup(true)
 run_timers()
-assert(current.at.x == 3620, "reload recovers an existing off-screen window")
+assert(#actions == 3 and actions[2].kind == "center", "reload recovers an existing off-screen window")
 print("ok - configuration reload recovers existing Toolbox windows")
 
 setup()

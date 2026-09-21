@@ -10,7 +10,7 @@ local function monitor_size(monitor)
 end
 
 -- Toolbox can reopen entirely outside the monitor layout after initial window rules run.
-local function recover_toolbox(window)
+local function schedule_toolbox_recovery(window)
   if window.class ~= "jetbrains-toolbox" or not window.xwayland or not window.floating then
     return
   end
@@ -32,19 +32,12 @@ local function recover_toolbox(window)
     end
 
     local workspace = hl.get_active_workspace()
-    local monitor = workspace and workspace.monitor
-    if not monitor then
+    if not workspace or not workspace.monitor then
       return
     end
 
-    local width, height = monitor_size(monitor)
     hl.dispatch(hl.dsp.window.move({ window = w, workspace = workspace, follow = false }))
-    hl.dispatch(hl.dsp.window.move({
-      window = w,
-      x = math.floor(monitor.x + (width - size.x) / 2),
-      y = math.floor(monitor.y + (height - size.y) / 2),
-      relative = false,
-    }))
+    hl.dispatch(hl.dsp.window.center({ window = w }))
     hl.dispatch(hl.dsp.window.alter_zorder({ window = w, mode = "top" }))
   end
 
@@ -54,13 +47,13 @@ local function recover_toolbox(window)
   end
 end
 
-hl.on("window.open", recover_toolbox)
+hl.on("window.open", schedule_toolbox_recovery)
 
 -- Also handle a Toolbox window already off screen when the configuration is reloaded.
 -- Raw iteration avoids the keybinding scanner's endlessly indexable mock window list.
 local windows = hl.get_windows()
 if type(windows) == "table" then
   for _, window in next, windows do
-    recover_toolbox(window)
+    schedule_toolbox_recovery(window)
   end
 end
