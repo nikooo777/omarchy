@@ -3,7 +3,7 @@
 source "$(dirname "${BASH_SOURCE[0]}")/base-test.sh"
 require_command lua
 
-timeout 10s lua <<'LUA' || exit 1
+timeout 10s lua - <<'LUA' || exit 1
 local current, monitors, workspace, opened, timers, actions
 o = { window = function() end }
 hl = {
